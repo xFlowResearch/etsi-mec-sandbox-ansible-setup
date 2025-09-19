@@ -1,0 +1,7 @@
+---
+- name: Install Helm
+  snap:
+    name: helm
+    channel: 3.7/stable
+    classic: true
+    state: present

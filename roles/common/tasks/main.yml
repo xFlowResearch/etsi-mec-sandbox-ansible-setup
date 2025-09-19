@@ -1,0 +1,21 @@
+---
+- name: Update apt cache and install base packages
+  apt:
+    update_cache: true
+    name: "{{ apt_base_packages }}"
+    state: present
+
+- name: Stop unattended-upgrades temporarily (to avoid apt lock)
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    state: stopped
+  register: stop_ua_result
+  failed_when:
+    - stop_ua_result is failed
+    - "'not-found' not in stop_ua_result.msg"
+
+- name: Ensure /etc/apt/keyrings exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'

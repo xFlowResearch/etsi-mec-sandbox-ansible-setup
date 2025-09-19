@@ -1,0 +1,69 @@
+# Global defaults
+target_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
+target_home: "{% if target_user == 'root' %}/root{% else %}/home/{{ target_user }}{% endif %}"
+
+apt_base_packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - software-properties-common
+  - git
+  - unzip
+  - tar
+  - python3
+  - python3-pip
+  - acl
+
+disable_swap: true
+
+# Container runtime
+containerd_version: "1.7.27-1"
+docker_package_state: present
+containerd_config_path: /etc/containerd/config.toml
+
+# Docker
+docker_version: "5:20.10.22~3-0~ubuntu-{{ ansible_distribution_release }}"
+docker_gpg_key_url: "https://download.docker.com/linux/ubuntu/gpg"
+docker_gpg_key_path: "/usr/share/keyrings/docker-archive-keyring.gpg"
+docker_repo_list_path: "/etc/apt/sources.list.d/docker.list"
+docker_repo_url: "https://download.docker.com/linux/ubuntu"
+docker_repo_component: "stable"
+# System facts for repo (calculated dynamically in tasks, but you can override if needed)
+docker_repo_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
+docker_repo_codename: "{{ ansible_lsb.codename | default('jammy') }}"
+
+
+# Kubernetes
+kubernetes_version: "v1.33.1"
+kubernetes_repo_apt_key_url: "https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key"
+kubernetes_repo_apt_entry: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /"
+kubeadm_cluster_name: "mec-sandbox"
+pod_network_cidr: "192.168.0.0/16"
+service_cidr: "10.96.0.0/12"
+apiserver_advertise_address: "127.0.0.1"
+
+# CNI (Calico)
+calico_version: "v3.30.0"
+calico_operator_manifest: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml"
+calico_custom_resources_manifest: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/custom-resources.yaml"
+
+# Helm
+helm_version: "v3.14.4"
+
+# Development environment (optional role)
+install_dev_env: true
+go_version: "1.17"
+go_tar: "go{{ go_version }}.linux-amd64.tar.gz"
+go_url: "https://dl.google.com/go/go{{ go_version }}.linux-amd64.tar.gz"
+node_major: 20
+node_version: "12.19.0"
+npm_version: "6.14.8"
+eslint_version: "5.16.0"
+python_packages: [pyyaml]
+
+# Optional local registry & CA trust
+docker_registry_host: "meep-docker-registry"                # e.g., "registry.local:5000"
+docker_insecure_registries: []                              # e.g., ["registry.local:5000"]
+docker_registry_mirrors: []                                 # e.g., ["https://mirror.gcr.io"]
+trust_k8s_ca_for_runtime: true                              # if true, copy /etc/kubernetes/pki/ca.crt to runtime trust store

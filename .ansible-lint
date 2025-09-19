@@ -1,0 +1,5 @@
+skip_list:  # rules to skip
+  - fqcn
+  - name
+  - risky-shell-pipe
+  - role-name[path]

@@ -1,0 +1,52 @@
+---
+
+- name: Install Docker engine and components
+  apt:
+    name:
+      - "docker-ce={{ docker_version }}"
+      - "docker-ce-cli={{ docker_version }}"
+      - "docker-compose-plugin"
+    state: present
+  become: true
+  notify: Restart docker
+
+- name: Hold Docker packages
+  apt:
+    name: "{{ item }}"
+    state: present
+    dpkg_options: 'hold'
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - docker-compose-plugin
+
+- name: Add user to Docker group
+  user:
+    name: "{{ target_user }}"
+    groups: docker
+    append: true
+
+- name: Allow {{ target_user }} to access containerd socket
+  acl:
+    path: /run/containerd/containerd.sock
+    etype: user
+    entity: '{{ target_user }}'
+    permissions: rw
+
+- name: Set dockerd config
+  copy:
+    src: "daemon.json"
+    dest: /etc/docker/
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Debug - Docker setup completed
+  debug:
+    msg: |
+      ✅ Docker setup completed successfully:
+      - GPG key added
+      - repo configured
+      - engine & plugins installed
+      - packages held
+      - user {{ target_user }} added to Docker group

@@ -1,0 +1,47 @@
+---
+- name: Disable swap (Kubernetes requirement)
+  when: disable_swap | default(true)
+  block:
+    - name: Disable swap at runtime if enabled
+      when: ansible_swaptotal_mb | int > 0
+      command: swapoff -a
+      changed_when: false
+
+    - name: Comment out any active swap entries in fstab
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*\s+swap\s+.*)$'
+        replace: '# \1'
+      notify: Reload systemd daemon
+
+- name: Ensure kernel modules are present
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Persist kernel modules
+  copy:
+    dest: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+    mode: '0644'
+
+- name: Configure sysctl for Kubernetes networking
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - { name: net.bridge.bridge-nf-call-iptables, value: '1' }
+    - { name: net.bridge.bridge-nf-call-ip6tables, value: '1' }
+    - { name: net.ipv4.ip_forward, value: '1' }
+
+- name: Reload systemd (if needed)
+  ansible.builtin.systemd:
+    daemon_reload: true

@@ -1,0 +1,28 @@
+---
+
+- name: Check if calico-system namespace exists
+  command: kubectl get ns tigera-operator --kubeconfig /etc/kubernetes/admin.conf
+  register: calico_ns
+  failed_when: false
+  changed_when: false
+
+- name: Install Calico operator
+  when: calico_ns.rc != 0
+  command: >
+    kubectl apply -f {{ calico_operator_manifest }}
+    --kubeconfig /etc/kubernetes/admin.conf
+  register: calico_operator_result
+  changed_when: "'created' in calico_operator_result.stdout"
+
+- name: Wait before applying Calico custom resources (allow operator to initialize)
+  pause:
+    seconds: 30
+  when: calico_ns.rc != 0
+
+- name: Install Calico custom resources
+  when: calico_ns.rc != 0
+  command: >
+    kubectl apply -f {{ calico_custom_resources_manifest }}
+    --kubeconfig /etc/kubernetes/admin.conf
+  register: calico_cr_result
+  changed_when: "'created' in calico_cr_result.stdout"

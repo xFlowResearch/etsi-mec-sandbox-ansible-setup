@@ -1,0 +1,6 @@
+# roles/docker/tasks/main.yml
+- name: Setup Docker repository
+  import_tasks: repo.yml
+
+- name: Install Docker
+  import_tasks: install.yml

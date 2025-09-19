@@ -1,0 +1,65 @@
+---
+
+- name: Check if containerd is installed
+  command: which containerd
+  register: containerd_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Include container runtime dependencies (ensure installed)
+  import_role:
+    name: containerd
+  when: containerd_check.rc != 0
+
+- block:
+    - name: Install Kubeadm dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gpg
+        state: present
+
+    - name: Add Kubernetes GPG key safely
+      shell: |
+        set -o pipefail
+        curl -fsSL {{ kubernetes_repo_apt_key_url }} | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        executable: /bin/bash
+
+    # - name: Add Kubernetes APT repo
+    #   copy:
+    #     dest: /etc/apt/sources.list.d/kubernetes.list
+    #     content: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /"
+    #     mode: '0644'
+    - name: Add Kubernetes apt repository
+      apt_repository:
+        repo: "{{ kubernetes_repo_apt_entry }}"
+        state: present
+        filename: kubernetes
+
+- name: Install kube packages (kubeadm, kubelet, kubectl)
+  apt:
+    update_cache: true
+    name:
+      - "kubelet"
+      - "kubeadm"
+      - "kubectl"
+    state: present
+
+- name: Hold kube packages at installed versions
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: Ensure kubelet is enabled and started
+  systemd:
+    name: kubelet
+    enabled: true
+    state: started

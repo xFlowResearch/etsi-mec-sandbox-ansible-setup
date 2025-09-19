@@ -1,0 +1,5 @@
+---
+
+- name: Install Kubernetes Dependencies
+  include_tasks:
+    file: install.yml

@@ -1,0 +1,19 @@
+---
+- name: Add Docker GPG key
+  shell: |
+    set -o pipefail
+    curl -fsSL {{ docker_gpg_key_url }} | gpg --dearmor --yes -o {{ docker_gpg_key_path }}
+  args:
+    executable: /bin/bash
+    creates: "{{ docker_gpg_key_path }}"
+  become: true
+
+- name: Add Docker repository
+  shell: |
+    set -o pipefail
+    echo "deb [arch={{ docker_repo_arch }} signed-by={{ docker_gpg_key_path }}] {{ docker_repo_url }} {{ docker_repo_codename }} {{ docker_repo_component }}" \
+      | tee {{ docker_repo_list_path }} > /dev/null
+  args:
+    executable: /bin/bash
+    creates: "{{ docker_repo_list_path }}"
+  become: true

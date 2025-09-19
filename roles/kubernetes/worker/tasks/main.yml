@@ -1,0 +1,21 @@
+---
+# Kubernetes worker node setup
+
+- name: Ensure kubelet is enabled and started
+  systemd:
+    name: kubelet
+    enabled: true
+    state: started
+
+- name: Copy join command script to worker
+  copy:
+    src: /tmp/kubeadm_join.sh
+    dest: /tmp/kubeadm_join.sh
+    mode: '0755'
+
+- name: Join worker to cluster
+  command: sh /tmp/kubeadm_join.sh
+  args:
+    creates: /etc/kubernetes/kubelet.conf
+
+# --node-name {{ inventory_hostname }}

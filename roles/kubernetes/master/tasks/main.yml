@@ -1,0 +1,104 @@
+---
+
+# Kubernetes master setup
+- name: Create kubeadm config file
+  copy:
+    dest: /tmp/kubeadm-config.yaml
+    content: |
+      apiVersion: kubeadm.k8s.io/v1beta4
+      kind: ClusterConfiguration
+      kubernetesVersion: "{{ kubernetes_version | regex_replace('\*$', '') }}"
+      clusterName: "{{ kubeadm_cluster_name }}"
+      networking:
+        podSubnet: "{{ pod_network_cidr }}"
+        serviceSubnet: "{{ service_cidr }}"
+      apiServer:
+        certSANs:
+          - 127.0.0.1
+          - localhost
+      ---
+      apiVersion: kubelet.config.k8s.io/v1beta1
+      kind: KubeletConfiguration
+      cgroupDriver: systemd
+    mode: '0644'
+
+- name: Initialize Kubernetes control plane if not initialized
+  command: kubeadm init --config=/tmp/kubeadm-config.yaml --upload-certs
+  args:
+    creates: /etc/kubernetes/admin.conf
+  register: kubeadm_init
+  changed_when: "'initialized' in (kubeadm_init.stdout + kubeadm_init.stderr) or kubeadm_init.rc == 0"
+  failed_when: kubeadm_init.rc not in [0, 1]
+  become: true
+
+- name: Create root kubeconfig directory
+  file:
+    path: /root/.kube
+    state: directory
+    mode: '0700'
+
+- name: Copy admin.conf to root kubeconfig
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    remote_src: true
+    mode: '0600'
+
+- name: Copy kubeconfig to non-root user if present
+  vars:
+    kube_user: "{{ target_user }}"
+  when: kube_user != 'root'
+  block:
+    - name: Ensure user .kube directory exists
+      file:
+        path: "{{ target_home }}/.kube"
+        state: directory
+        owner: "{{ kube_user }}"
+        group: "{{ kube_user }}"
+        mode: '0700'
+
+    - name: Copy kubeconfig to user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "{{ target_home }}/.kube/config"
+        remote_src: true
+        owner: "{{ kube_user }}"
+        group: "{{ kube_user }}"
+        mode: '0600'
+
+- name: Check if master taint exists
+  command: kubectl get nodes -o jsonpath='{.items[*].spec.taints}' --kubeconfig={{ target_home }}/.kube/config
+  register: taints
+  changed_when: false
+
+- name: Enable scheduling on master node
+  command: kubectl taint --kubeconfig={{ target_home }}/.kube/config nodes --all node-role.kubernetes.io/master-
+  when: '"node-role.kubernetes.io/master" in taints.stdout'
+  changed_when: false
+
+# - name: "Enable scheduling on control plane node"
+#   command: kubectl taint --kubeconfig={{ target_home }}/.kube/config nodes --all node-role.kubernetes.io/control-plane-
+#   changed_when: false
+
+- name: Get kubeadm join command
+  command: kubeadm token create --print-join-command
+  register: kubeadm_join_cmd
+  changed_when: false
+
+- name: Save join command to file on master
+  copy:
+    content: "{{ kubeadm_join_cmd.stdout }}"
+    dest: /tmp/kubeadm_join.sh
+    mode: '0755'
+
+- name: Fetch join command to control node
+  fetch:
+    src: /tmp/kubeadm_join.sh
+    dest: /tmp/kubeadm_join.sh
+    flat: true
+
+- name: Print kubeadm init info
+  debug:
+    msg:
+      - "kubeadm init finished. If this is first master, kubeconfig copied to /root/.kube/config"
+      - "Join command for workers"

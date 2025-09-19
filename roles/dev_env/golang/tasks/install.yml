@@ -1,0 +1,37 @@
+---
+
+- name: Check Go version
+  command: /usr/local/go/bin/go version
+  register: go_version_output
+  ignore_errors: true
+  changed_when: false
+
+- name: Install Go toolchain
+  unarchive:
+    src: "{{ go_url }}"
+    dest: /usr/local
+    remote_src: true
+  when: go_version_output.stdout is not search("go{{ go_version }}")
+
+- name: Setup Go environment
+  blockinfile:
+    path: "{{ target_home }}/.bashrc"
+    block: |
+      export GOPATH={{ target_home }}/gocode
+      export PATH=$PATH:$GOPATH/bin:/usr/local/go/bin
+
+- name: Install GolangCI-Lint
+  shell: |
+    /usr/local/go/bin/go env -w GOPATH={{ target_home }}/gocode
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b {{ target_home }}/gocode/bin v1.46.0
+  args:
+    executable: /bin/bash
+    creates: "{{ target_home }}/gocode/bin/golangci-lint"
+  environment:
+    PATH: "/usr/local/go/bin:{{ target_home }}/gocode/bin:{{ ansible_env.PATH }}"
+  become: true
+  become_user: "{{ target_user }}"
+
+- name: Debug
+  debug:
+    msg: "✅ Go environment ready: Go {{ go_version }}, golangci-lint installed and configured"

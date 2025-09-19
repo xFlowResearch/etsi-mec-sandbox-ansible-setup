@@ -1,0 +1,33 @@
+---
+
+- hosts: k8s_masters
+  become: true
+  vars_prompt:
+    - name: ansible_become_pass
+      prompt: "Enter sudo password for master"
+      private: true
+  roles:
+    - common
+    - kernel
+    - containerd
+    - docker
+    - kubernetes/master
+    - cni_calico
+    - helm
+    - role: dev_env/golang
+      when: install_dev_env
+    - role: dev_env/node
+      when: install_dev_env
+
+# - hosts: k8s_workers
+#   become: true
+#   vars_prompt:
+#     - name: ansible_become_pass
+#       prompt: "Enter sudo password for workers"
+#       private: true
+#   roles:
+#     - common
+#     - kernel
+#     - containerd
+#     - kubernetes/common
+#     - kubernetes/worker
