@@ -1,4 +1,4 @@
-# MEC Sandbox Ansible (Multi-node Best Practices)
+# ETSI MEC Sandbox Ansible Setup
 
 This repository provides an **Ansible-based automation framework** to set up a multi-node Kubernetes cluster with best practices for container runtimes, networking (CNI), kernel tuning, and development tools.
 
