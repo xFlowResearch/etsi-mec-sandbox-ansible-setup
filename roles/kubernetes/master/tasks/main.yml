@@ -101,4 +101,4 @@
   debug:
     msg:
       - "kubeadm init finished. If this is first master, kubeconfig copied to /root/.kube/config"
-      - "Join command for workers"
+      - "Join command for workers saved"

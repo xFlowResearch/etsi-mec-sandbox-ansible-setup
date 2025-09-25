@@ -1,39 +1,39 @@
 ---
-# - name: Ensure Docker repo exists for containerd
-#   import_role:
-#     name: docker
-#     tasks_from: repo.yml
+- name: Ensure Docker repo exists for containerd
+  import_role:
+    name: docker
+    tasks_from: repo.yml
 
-# - name: Ensure containerd is installed
-#   apt:
-#     name: "containerd.io={{ containerd_version }}"
-#     state: present
-#     update_cache: true
-#   become: true
-#   retries: 3        # try up to 10 times
-#   delay: 10         # wait 10 between retries
+- name: Ensure containerd is installed
+  apt:
+    name: "containerd.io={{ containerd_version }}"
+    state: present
+    update_cache: true
+  become: true
+  retries: 3        # try up to 3 times
+  delay: 10         # wait 10 between retries
 
-# - name: Generate default containerd config
-#   shell: containerd config default > {{ containerd_config_path }}
-#   args:
-#     executable: /bin/bash
-#   become: true
-#   changed_when: true
+- name: Generate default containerd config
+  shell: containerd config default > {{ containerd_config_path }}
+  args:
+    executable: /bin/bash
+  become: true
+  changed_when: true
 
-# - name: Ensure SystemdCgroup is true
-#   replace:
-#     path: "{{ containerd_config_path }}"
-#     regexp: 'SystemdCgroup = false'
-#     replace: 'SystemdCgroup = true'
-#   become: true
-#   notify: Restart containerd
+- name: Ensure SystemdCgroup is true
+  replace:
+    path: "{{ containerd_config_path }}"
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+  become: true
+  notify: Restart containerd
 
-# - name: Replace containerd sandbox image
-#   replace:
-#     path: "{{ containerd_config_path }}"
-#     regexp: 'sandbox_image = "registry.k8s.io/pause:3.8'
-#     replace: 'sandbox_image = "registry.k8s.io/pause:3.10'
-#   become: true
+- name: Replace containerd sandbox image
+  replace:
+    path: "{{ containerd_config_path }}"
+    regexp: 'sandbox_image = "registry.k8s.io/pause:3.8'
+    replace: 'sandbox_image = "registry.k8s.io/pause:3.10'
+  become: true
 
 - name: Trigger containerd restart
   debug:

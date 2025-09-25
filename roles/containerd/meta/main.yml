@@ -1,5 +1,0 @@
----
-
-# dependencies:
-#   - role: docker
-#     tasks_from: docker/repo.yml
